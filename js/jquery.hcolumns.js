@@ -7,9 +7,8 @@
         },
 
         noContentString: "There is no node here",
-        searchPlaceholderString: "Search...",
-        
-        searchable: false,
+
+        labelText_maxLength: 15,
 
         customNodeTypeIndicator: {},
         customNodeTypeHandler: {}
@@ -70,7 +69,7 @@
                     $("<div></div>").addClass("column-view-composition").appendTo(self);
 
                     // each node clicked should call this function
-                    self.on("click", ".column ul li:not('.search')", settings.columnView._entryClick);
+                    self.on("click", ".column ul li", settings.columnView._entryClick);
                     
                     // inital load
                     settings.nodeSource(null, function(err, data) {
@@ -111,54 +110,60 @@
 
             var ListElm = $("<ul></ul>");
 
-            if (list.length === 0) {
+            if(list.length === 0) {
                 var NoContentElm = $("<p></p>").text(columnView.settings.noContentString);
 
                 return self._addColumn(NoContentElm, self);
             }
-            
-            if (self.settings.searchable) {
-            	self._addColumnSearch(ListElm);
-            }
-			
-			for (var i = 0; i < list.length; i++) {
-			    // we create the element
-               	var EntryElm = $(document.createElement('li')).data("node-id", list[i].id).data("node-type", list[i].type).data("node-data", list[i]).attr('title', list[i].label);
-                var EntryIconElm = $(document.createElement('i')).addClass( self.settings.indicators[list[i].type] );
+
+            list.map(function(entry) {
+		var searchInput = $("");
+                // we create the element
+ 		
+                var EntryElm = $("<li></li>").data("node-id", entry.id).data("node-type", entry.type).data("node-data", entry);
+                var EntryIconElm = $("<i></i>").addClass( self.settings.indicators[entry.type] );
+                
+                // label cut string
+                if( entry.label.length > self.settings.labelText_maxLength ) {
+                    entry.label = entry.label.substring(0, (self.settings.labelText_maxLength - 3) ) + "...";
+                }
                 
                 // we build the node entry
-				EntryElm[0].appendChild( document.createTextNode(list[i].label) );
-				EntryElm[0].appendChild( EntryIconElm[0] );
-				
-				ListElm[0].appendChild(EntryElm[0]);
-			}
-			
+                EntryElm.append( document.createTextNode(entry.label) );
+                EntryElm.append(EntryIconElm);
+
+                EntryElm.appendTo(ListElm);
+            });
+
             return self._addColumn(ListElm, self);
-        },
-        
-        _addColumnSearch: function(listElm) {
-        	$('<li class="search"><input type="text" placeholder=" ' + this.settings.searchPlaceholderString + '"></li>').on('keyup', 'input', function(event) {
-            	var searchTerm = $(this).val();
-            	
-            	if (searchTerm.length >= 2) {
-	            	$(this).closest('li').siblings().each(function() {
-	            		if (searchTerm !== '' && $(this).data('node-data').label.toLowerCase().indexOf(searchTerm.toLowerCase()) === -1) {
-	            			$(this).hide();
-	            		}
-	            		else {
-	            			$(this).show();
-	            		}
-	            	});
-            	}
-            	else {
-            		$(this).closest('li').siblings().show();
-            	}
-            }).appendTo(listElm);
         },
 
         _addColumn: function(content_dom_node, columnView) {
             // create new column div
-            var ColumnElm = $("<div></div>").addClass("column");
+            var ColumnElm = $("<div><div class='column-search'><input type='text' placeHolder='Search'/></div></div>").addClass("column");
+		ColumnElm.find("input[type=text]").on('input', function()
+			{
+				var searchText = $(this).val();
+				console.log(searchText);
+				ColumnElm.find("ul>li").each(function(data){
+					var nodeData = $(this).data("node-data");
+					console.log("------");
+					console.log(nodeData);
+					var match = false;
+					for(var c in nodeData){
+						if(nodeData[c] && (nodeData[c]+"").indexOf(searchText) >= 0){
+							
+							match = true;
+							break;
+						}
+					}
+					if(match){
+						$(this).show();
+					}else{
+						$(this).hide();
+					}
+				});
+			});
 
             // append the content
             ColumnElm.append(content_dom_node);
